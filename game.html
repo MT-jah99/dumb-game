@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>เกมใบ้คำ (10 คำถาม)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Kanit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        .game-container { display: none; }
+        .portrait-warning { display: flex; }
+        
+        @media screen and (orientation: landscape) {
+            .game-container { display: block; }
+            .portrait-warning { display: none; }
+        }
+        
+        .game-word {
+            font-size: clamp(2.5rem, 10vw, 7rem);
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.25);
+        }
+        
+        .timer-bar {
+            transition: width 0.1s linear, background-color 0.5s ease;
+        }
+        
+        .screen {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .screen.hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.03); }
+        }
+        .pulse-animation {
+            animation: pulse 0.7s ease-in-out infinite alternate;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        #word-container.correct { animation: correct-answer 0.8s ease-out forwards; }
+        #word-container.skip { animation: skip-answer 0.5s ease-out forwards; }
+
+        @keyframes correct-answer {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); color: #10B981; }
+            100% { transform: scale(0.8); opacity: 0; }
+        }
+
+        @keyframes skip-answer {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            100% { transform: translateY(100px) rotate(5deg); opacity: 0; color: #F59E0B;}
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen overflow-hidden">
+    <!-- Portrait Warning -->
+    <div class="portrait-warning items-center justify-center min-h-screen p-8 text-center">
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-8 max-w-md shadow-2xl">
+            <div class="text-6xl mb-4">📱</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">กรุณาหมุนหน้าจอ</h2>
+            <p class="text-gray-600">เพื่อประสบการณ์การเล่นที่ดีที่สุด<br>กรุณาหมุนโทรศัพท์ของคุณให้อยู่ในแนวนอน</p>
+        </div>
+    </div>
+
+    <!-- Main Game Container -->
+    <div class="game-container">
+        <!-- Category Selection Screen -->
+        <div id="categoryScreen" class="screen min-h-screen flex items-center justify-center p-8">
+            <div class="text-center w-full max-w-4xl">
+                <h1 class="text-6xl font-bold text-white mb-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.3);">🎭 เกมใบ้คำ</h1>
+                <p class="text-2xl text-white/80 mb-12">เลือกหมวดหมู่ที่ต้องการเล่น</p>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <button onclick="selectCategory('animals')" class="category-btn bg-green-500 hover:bg-green-600 text-white p-6 rounded-2xl text-2xl font-semibold transition-all transform hover:scale-105 hover:-translate-y-2 shadow-lg">🐘 สัตว์</button>
+                    <button onclick="selectCategory('food')" class="category-btn bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-2xl text-2xl font-semibold transition-all transform hover:scale-105 hover:-translate-y-2 shadow-lg">🍜 อาหาร</button>
+                    <button onclick="selectCategory('jobs')" class="category-btn bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-2xl text-2xl font-semibold transition-all transform hover:scale-105 hover:-translate-y-2 shadow-lg">👨‍⚕️ อาชีพ</button>
+                    <button onclick="selectCategory('objects')" class="category-btn bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-2xl text-2xl font-semibold transition-all transform hover:scale-105 hover:-translate-y-2 shadow-lg">📱 ของใช้</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions Screen -->
+        <div id="instructionScreen" class="screen hidden min-h-screen flex items-center justify-center p-8">
+            <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-8 max-w-2xl text-center shadow-2xl">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">วิธีการเล่น</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-left text-lg">
+                    <p>📱 ถือโทรศัพท์ไว้บนหน้าผาก</p>
+                    <p>🎯 เป้าหมาย: ทาย 10 คำให้ถูก</p>
+                    <p class="text-green-600 font-semibold">👆 แตะหน้าจอ = ตอบถูก</p>
+                    <p class="text-orange-600 font-semibold">👇 ปัดจอลง = ข้าม</p>
+                </div>
+                <button onclick="prepareGame()" class="mt-8 bg-green-500 hover:bg-green-600 text-white px-12 py-4 rounded-xl text-xl font-semibold transition-all transform hover:scale-105 shadow-lg">
+                    พร้อมแล้ว! เริ่มเลย!
+                </button>
+            </div>
+        </div>
+        
+        <!-- Countdown Screen -->
+        <div id="countdownScreen" class="screen hidden min-h-screen flex items-center justify-center">
+            <div id="countdown" class="game-word font-bold text-white"></div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen hidden min-h-screen relative">
+            <div class="absolute top-0 left-0 w-full h-3 bg-black/20">
+                <div id="timerBar" class="timer-bar h-full bg-green-400"></div>
+            </div>
+            <div class="absolute top-6 left-6 text-white text-2xl font-semibold" style="text-shadow: 1px 1px 4px rgba(0,0,0,0.5);">คะแนน: <span id="score">0</span> / 10</div>
+            <div class="absolute top-6 right-6 text-white text-2xl font-semibold" style="text-shadow: 1px 1px 4px rgba(0,0,0,0.5);">เวลา: <span id="timeLeft">60</span></div>
+            
+            <div class="flex items-center justify-center min-h-screen" id="gameArea">
+                <div id="word-container" class="text-center">
+                    <div id="currentWord" class="game-word font-bold text-white"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="screen hidden min-h-screen flex items-center justify-center p-8">
+            <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-8 max-w-2xl text-center shadow-2xl fade-in">
+                <div id="result-emoji" class="text-7xl mb-4">🎉</div>
+                <h2 id="result-title" class="text-4xl font-bold text-gray-800 mb-4">จบเกม!</h2>
+                <p class="text-3xl font-semibold text-indigo-600 mb-6">คะแนน: <span id="finalScore">0</span> / 10</p>
+                
+                <div id="correctWordsContainer" class="mb-8 max-h-40 overflow-y-auto">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">คำที่ตอบถูก:</h3>
+                    <p id="correctWordsList" class="text-lg text-gray-600 leading-relaxed"></p>
+                </div>
+                
+                <div class="flex justify-center space-x-4">
+                    <button onclick="resetGame()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all transform hover:scale-105">เล่นหมวดนี้อีกครั้ง</button>
+                    <button onclick="goToCategories()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all transform hover:scale-105">เลือกหมวดใหม่</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ส่วนของข้อมูลเกม ---
+        const categories = {
+            animals: ['ช้าง', 'แมว', 'สุนัข', 'นก', 'ปลา', 'งู', 'กบ', 'หนู', 'วัว', 'หมี', 'เสือ', 'ลิง', 'กิ้งก่า', 'ปู', 'กุ้ง', 'ผีเสื้อ', 'จระเข้', 'ฉลาม', 'ยีราฟ', 'ม้าลาย', 'ฮิปโป', 'เพนกวิน', 'จิงโจ้', 'โคอาลา', 'แพนด้า'],
+            food: ['ส้มตำ', 'ผัดไทย', 'ต้มยำกุ้ง', 'ข้าวผัด', 'ไก่ย่าง', 'พิซซ่า', 'ซูชิ', 'แฮมเบอร์เกอร์', 'แกงเขียวหวาน', 'ข้าวเหนียวมะม่วง', 'หมูปิ้ง', 'ก๋วยเตี๋ยว', 'ทุเรียน', 'มังคุด', 'ชาไข่มุก', 'ครัวซองต์', 'สเต็ก', 'สปาเก็ตตี้', 'ขนมจีน', 'ลาบ'],
+            jobs: ['หมอ', 'ครู', 'ตำรวจ', 'นักดับเพลิง', 'พ่อครัว', 'นักร้อง', 'นักบิน', 'ทนายความ', 'วิศวกร', 'สถาปนิก', 'นักแสดง', 'นักข่าว', 'ช่างตัดผม', 'โปรแกรมเมอร์', 'เกษตรกร', 'นักวิทยาศาสตร์', 'นักบินอวกาศ', 'ยูทูบเบอร์', 'พยาบาล', 'บุรุษไปรษณีย์'],
+            objects: ['โทรศัพท์', 'รถยนต์', 'ร่ม', 'แว่นตา', 'นาฬิกา', 'กระเป๋า', 'รองเท้า', 'หนังสือ', 'คอมพิวเตอร์', 'โทรทัศน์', 'ตู้เย็น', 'พัดลม', 'โคมไฟ', 'เตียง', 'โต๊ะ', 'เก้าอี้', 'กุญแจ', 'โดรน', 'หูฟัง', 'ไมโครเวฟ']
+        };
+        const GAME_DURATION = 60;
+        const QUESTIONS_PER_ROUND = 10;
+
+        // --- ส่วนของสถานะเกม (Game State) ---
+        let currentCategory = '';
+        let gameWords = [];
+        let currentWordIndex = 0;
+        let score = 0;
+        let timeLeft = GAME_DURATION;
+        let gameTimer = null;
+        let correctWords = [];
+        let isGameActive = false;
+
+        // --- ส่วนของการจัดการหน้าจอ (Screen Management) ---
+        const screens = {
+            category: document.getElementById('categoryScreen'),
+            instruction: document.getElementById('instructionScreen'),
+            countdown: document.getElementById('countdownScreen'),
+            game: document.getElementById('gameScreen'),
+            results: document.getElementById('resultsScreen')
+        };
+        
+        function showScreen(screenName) {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            if (screens[screenName]) {
+                screens[screenName].classList.remove('hidden');
+            }
+        }
+
+        // --- ส่วนของ Logic หลักของเกม ---
+
+        function selectCategory(category) {
+            currentCategory = category;
+            showScreen('instruction');
+        }
+
+        function prepareGame() {
+            // *** จุดที่เปลี่ยนแปลง: สุ่มและเลือกมาแค่ 10 คำ ***
+            const shuffled = [...categories[currentCategory]].sort(() => Math.random() - 0.5);
+            gameWords = shuffled.slice(0, QUESTIONS_PER_ROUND);
+
+            currentWordIndex = 0;
+            score = 0;
+            timeLeft = GAME_DURATION;
+            correctWords = [];
+            isGameActive = false;
+
+            document.getElementById('score').textContent = score;
+            document.getElementById('timeLeft').textContent = timeLeft;
+            document.getElementById('timerBar').style.width = '100%';
+            document.getElementById('timerBar').className = 'timer-bar h-full bg-green-400';
+
+            showScreen('countdown');
+            startCountdown();
+        }
+
+        function startCountdown() {
+            let count = 3;
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.textContent = count;
+
+            const countdownInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownElement.textContent = count;
+                } else {
+                    clearInterval(countdownInterval);
+                    startGame();
+                }
+            }, 1000);
+        }
+
+        function startGame() {
+            isGameActive = true;
+            showScreen('game');
+            showNextWord();
+            startTimer();
+        }
+        
+        function showNextWord() {
+            const wordContainer = document.getElementById('word-container');
+            wordContainer.className = '';
+
+            // *** จุดที่เปลี่ยนแปลง: เงื่อนไขการจบเกมเมื่อครบ 10 คำ ***
+            if (currentWordIndex >= gameWords.length) {
+                endGame();
+                return;
+            }
+            
+            requestAnimationFrame(() => {
+                document.getElementById('currentWord').textContent = gameWords[currentWordIndex];
+            });
+        }
+
+        function startTimer() {
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timeLeft').textContent = timeLeft;
+                
+                const percentage = (timeLeft / GAME_DURATION) * 100;
+                const timerBar = document.getElementById('timerBar');
+                timerBar.style.width = percentage + '%';
+                
+                if (timeLeft <= GAME_DURATION * 0.5 && timeLeft > GAME_DURATION * 0.2) {
+                    timerBar.style.backgroundColor = '#FBBF24'; // Yellow
+                } else if (timeLeft <= GAME_DURATION * 0.2) {
+                    timerBar.style.backgroundColor = '#F87171'; // Red
+                    if (!timerBar.classList.contains('pulse-animation')) {
+                         timerBar.classList.add('pulse-animation');
+                    }
+                }
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            if (!isGameActive) return;
+            isGameActive = false;
+            clearInterval(gameTimer);
+            
+            document.getElementById('finalScore').textContent = score;
+            
+            if (correctWords.length > 0) {
+                document.getElementById('correctWordsContainer').style.display = 'block';
+                document.getElementById('correctWordsList').textContent = correctWords.join(', ');
+            } else {
+                document.getElementById('correctWordsContainer').style.display = 'none';
+            }
+            
+            const resultEmoji = document.getElementById('result-emoji');
+            const resultTitle = document.getElementById('result-title');
+            if (score >= 8) {
+                resultEmoji.textContent = '🏆';
+                resultTitle.textContent = 'ยอดเยี่ยม!';
+            } else if (score >= 5) {
+                resultEmoji.textContent = '�';
+                resultTitle.textContent = 'เยี่ยมมาก!';
+            } else {
+                resultEmoji.textContent = '🙂';
+                resultTitle.textContent = 'พยายามได้ดี!';
+            }
+
+            showScreen('results');
+        }
+
+        // --- ส่วนของการควบคุม (User Input) ---
+        let touchStartY = 0;
+        const gameArea = document.getElementById('gameArea');
+
+        function handleCorrectAnswer() {
+            if (!isGameActive) return;
+            score++;
+            correctWords.push(gameWords[currentWordIndex]);
+            document.getElementById('score').textContent = score;
+            document.getElementById('word-container').classList.add('correct');
+            setTimeout(() => {
+                currentWordIndex++;
+                showNextWord();
+            }, 500);
+        }
+
+        function handleSkipWord() {
+            if (!isGameActive) return;
+            document.getElementById('word-container').classList.add('skip');
+            setTimeout(() => {
+                currentWordIndex++;
+                showNextWord();
+            }, 400);
+        }
+
+        gameArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        gameArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const touchEndY = e.changedTouches[0].clientY;
+            if (touchEndY > touchStartY + 50) { 
+                handleSkipWord();
+                return;
+            }
+            if (Math.abs(touchEndY - touchStartY) < 10) {
+                handleCorrectAnswer();
+            }
+        }, { passive: false });
+        
+        // --- ส่วนของปุ่ม Reset และกลับหน้าหลัก ---
+        function resetGame() {
+            showScreen('instruction');
+        }
+
+        function goToCategories() {
+            showScreen('category');
+        }
+        
+        window.onload = () => {
+            showScreen('category');
+        };
+    </script>
+</body>
+</html>
+�
